@@ -2,6 +2,7 @@
 import cv2 as cv
 import mediapipe as mp
 
+
 class PoseTracker:
     # All objects have LANDMARKS in common
     LANDMARKS = {
