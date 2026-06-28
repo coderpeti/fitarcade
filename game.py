@@ -4,13 +4,11 @@ import random
 
 
 class Game:
-    def __init__(self, width=800, height=600):
-        pygame.init()  # Initializing pygame
+    def __init__(self, screen, width=800, height=600):
         # Window size
         self.width = width
         self.height = height
-        self.screen = pygame.display.set_mode((width, height))  # Create window
-        pygame.display.set_caption("Fitarcade")  # Window title
+        self.screen = screen
         self.clock = pygame.time.Clock()  # If it weren't, it would run faster on a fast machine, slower on a slow machine
         # Player
         self.player_x = 120  # The player is always 120 pixels from the left side
@@ -22,11 +20,20 @@ class Game:
         self.pipe_speed = 5  # They move 5 pixels to the left every frame (60 FPS: 5 × 60 = 300 pixels/second)
         self.pipes = []  # This is where the pipes will go
         self.score = 0  # Score (initially 0 points)
-        self.running = True  # As long as it's true, the game runs
+        raw_image = pygame.image.load("images/player.png").convert_alpha()  # This loads the image from your hard drive and converts it to retain its alpha channel
+        size = self.player_radius * 2  # 40x40 pixel
+        raw_image = pygame.transform.scale(raw_image, (size, size))  # Resize the raw image so that the length of its sides is equal to radius * 2
+        self.player_image = self._make_rounded(raw_image, size)  # Convert it to a circular image
         self.spawn_pipe()  # Creating the first pipe
+        
+    def _make_rounded(self, image, size):
+            rounded = pygame.Surface((size, size), pygame.SRCALPHA)  # Create a surface that supports transparency
+            pygame.draw.circle(rounded, (255, 255, 255), (size // 2, size // 2), size // 2)  # Draws a white circle in the center of the transparent surface
+            image.blit(rounded, (0, 0), special_flags=pygame.BLEND_RGBA_MIN)  # Copies the transparent image onto the original, but compares each channel and chooses the smaller one because of special_flags=pygame.BLEND_RGBA_MIN, i.e. where there is transparency, it keeps the transparent one because 0 is always smaller, and where there is a white circle, it will always draw the original image because the pixel value will always be smaller than 255 (white)
+            return image  # We will return with the modified image
 
     def spawn_pipe(self):
-        gap_y = random.randint(150, self.height - 150)  # We don't want the gap to be too high or too low
+        gap_y = random.randint(90, self.height - 90)  # We don't want the gap to be too high or too low
         self.pipes.append({
             "x": self.width,  # The starting X coordinate (starting from the right edge of the window)
             "gap_y": gap_y  # The Y coordinate of the middle of the section between the top and bottom columns
@@ -46,14 +53,12 @@ class Game:
             self.score += 1
 
     def draw(self):
-        self.screen.fill((30, 30, 30))  # Fills the entire screen with one color
+        self.screen.fill((255, 214, 102))  # Fills the entire screen with one color
         # Rendering the player
-        pygame.draw.circle(
-            self.screen,  # Surface
-            (0, 255, 0),  #  Color
-            (self.player_x, self.player_y),  # Center
-            self.player_radius  # Radius
-        )
+        # We always start drawing with the upper left corner, so we move left and up with the radius value
+        draw_x = self.player_x - self.player_radius
+        draw_y = self.player_y - self.player_radius
+        self.screen.blit(self.player_image, (draw_x, draw_y))  # Draw the image on the screen at the given coordinates
         # We iterate through the pipes
         for pipe in self.pipes:
             # Create the top column rectangle
@@ -72,10 +77,9 @@ class Game:
                 self.height  # Pygame automatically cuts off the part that is off-screen, so it's no problem if the rectangle is 600 pixels high and hangs way over the screen
             )
             # Drawing columns
-            pygame.draw.rect(self.screen, (0, 200, 0), top_rect)
-            pygame.draw.rect(self.screen, (0, 200, 0), bottom_rect)
-        pygame.display.flip()  # Until this runs, the user won't see what we drew
-
+            pygame.draw.rect(self.screen, (0, 149, 255), top_rect)
+            pygame.draw.rect(self.screen, (0, 149, 255), bottom_rect)
+        
     def check_collision(self):
         # We create a rectangle because Pygame can calculate collisions fastest with rectangles
         player_rect = pygame.Rect(
@@ -109,12 +113,3 @@ class Game:
             if player_rect.colliderect(bottom_rect):
                 return True
         return False  # If the player does not collide with anything then False
-
-    def handle_events(self):
-        for event in pygame.event.get():  # We iterate through all the events that have occurred since the previous frame
-            # If the user has closed the window, running will be false
-            if event.type == pygame.QUIT:
-                self.running = False
-
-    def tick(self):
-        self.clock.tick(60)  # We set the FPS to 60 on all machines
